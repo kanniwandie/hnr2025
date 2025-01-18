@@ -47,12 +47,16 @@ labal = None
 screenshots = []
 max_screenshots = 5
 
+# Relative file paths to refer to poses
+current_file = os.path.dirname(os.path.abspath(__file__))
+asset_folder = os.path.join(current_file, "../assets/")  # Folder that contains all the assets
+
 # Predefined “poses” if you want multiple animations (optional).
 # For simplicity, we’ll just use “Walking.gif” from the first code,
 # but you can add more if desired.
 poses = {
-    "walk": "assets/pets/duck/animations/Walking.gif",  # adjust path
-    # "idle": "assets/pets/duck/animations/Idle.gif",
+    "walk": os.path.join(asset_folder, "pets/duck/animations/Walking.gif"),  # adjust path
+    # "idle": os.path.join(asset_folder, "/pets/duck/animations/Idle.gif"),
     # ... etc.
 }
 
