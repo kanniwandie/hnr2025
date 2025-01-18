@@ -5,13 +5,18 @@ from pets.goose import Goose  # Import the Goose pet class from your project str
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.attributes("-transparentcolor", "blue")
+    root.attributes("-transparentcolor", "black")
     root.geometry("100x100+200+200")
     root.overrideredirect(True)
 
     pet = Pet(root, name="Roasty")
+
+
     pet.draw()
-    pet.move()
+
+    # Randomly move horizontally or vertically after a random time using move_horizontally or move_vertically methods
+    pet.move_randomly()
+
     pet.start_screenshot_task()  # Start periodic screenshot task
 
     root.mainloop()

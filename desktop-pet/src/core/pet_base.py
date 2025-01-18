@@ -6,25 +6,25 @@ from pets.behaviors.interactions import generate_roast_from_image_sequence
 from gui.overlay import display_response_above_pet
 from gui.utils import load_gif
 
-
 class Pet:
-    def __init__(self, window, name="Pet", width=100, height=100):
+    DIRECTIONS = {"horizontal": "horizontal", "vertical": "vertical"}
+
+    def __init__(self, window, name="Pet", width=1000, height=1000):
         self.window = window
         self.name = name
         self.width = width
         self.height = height
-        self.x_direction = random.choice([-1, 1])
-        self.y_direction = random.choice([-1, 1])
+        self.is_grounded = False
         self.moving = True
         self.canvas = None
+        self.facing_right = True  # Track the pet's facing direction
 
-        # Placeholder for animation
-        self.frames = []  # List of frames
+        # Animation placeholders
+        self.frames = []
         self.current_frame_index = 0
-        self.image_id = None  # Canvas image ID
+        self.image_id = None
 
-        # Mapping of pose to image/gif file
-        self.current_pose = "idle"
+        # Animation poses
         self.poses = {
             "idle": "assets/pets/duck/animations/Idle.gif",
             "crouch": "assets/pets/duck/animations/Crouching.gif",
@@ -35,19 +35,48 @@ class Pet:
         }
 
         # Screenshot management
-        self.screenshots = []  # List to store file paths of the latest screenshots
-        self.max_screenshots = 5  # Maximum number of screenshots to store
+        self.screenshots = []
+        self.max_screenshots = 5
+
+        # Set initial position
+        self.set_starting_position()
+
+    def set_starting_position(self):
+        """Set the pet's starting position to the bottom-middle of the screen."""
+        screen_width = self.window.winfo_screenwidth()
+        screen_height = self.window.winfo_screenheight()
+        x = (screen_width - self.width) // 2
+        y = screen_height - self.height
+        self.window.geometry(f"{self.width}x{self.height}+{x}+{y}")
+
+    def set_pose(self, pose_name):
+        """Switch the pet's animation to the given pose."""
+        if pose_name in self.poses:
+            self.load_and_display_gif(self.poses[pose_name])
+        else:
+            print(f"Pose '{pose_name}' not found!")
+
+    def apply_gravity(self):
+        """Apply gravity to make the pet fall."""
+        if self.is_grounded:
+            return
+
+        screen_height = self.window.winfo_screenheight()
+        current_x, current_y = self.window.winfo_x(), self.window.winfo_y()
+
+        if current_y + self.height < screen_height:
+            self.window.geometry(f"{self.width}x{self.height}+{current_x}+{current_y + 10}")  # Stronger gravity (10 pixels)
+            self.window.after(30, self.apply_gravity)  # Faster updates (30 ms)
+        else:
+            self.is_grounded = True
+            self.window.geometry(f"{self.width}x{self.height}+{current_x}+{screen_height - self.height}")
 
     def draw(self):
         """Draw the pet on the screen with its idle animation."""
-        self.canvas = tk.Canvas(self.window, width=self.width, height=self.height, bg="blue", highlightthickness=0)
+        self.canvas = tk.Canvas(self.window, width=self.width, height=self.height, bg="black", highlightthickness=0)
         self.canvas.pack()
-
-        self.load_and_display_gif(self.poses["idle"])
-
-        # Bind interaction event
+        self.set_pose("idle")
         self.canvas.bind("<Button-1>", self.interact)
-
 
     def load_and_display_gif(self, file_path):
         """Load a GIF and start animating it."""
@@ -56,69 +85,115 @@ class Pet:
             print("Error: No frames loaded from GIF!")
             return
 
-        # Display the first frame
+        # Mirror frames if facing left
+        if not self.facing_right:
+            self.frames = [frame.transpose(method="flip") for frame in self.frames]
+
         self.image_id = self.canvas.create_image(self.width // 2, self.height // 2, image=self.frames[0])
         self.animate_gif()
 
     def animate_gif(self):
         """Cycle through the GIF frames."""
         if self.frames:
-            # Update the canvas with the current frame
             self.current_frame_index = (self.current_frame_index + 1) % len(self.frames)
             self.canvas.itemconfig(self.image_id, image=self.frames[self.current_frame_index])
+            self.window.after(100, self.animate_gif)
 
-            # Schedule the next frame update
-            self.window.after(100, self.animate_gif)  # Adjust the frame rate as needed
+    def move_horizontally(self, n):
+        """Move the pet horizontally by n pixels."""
+        self.set_pose("walk")
 
+        screen_width = self.window.winfo_screenwidth()
+        current_x, current_y = self.window.winfo_x(), self.window.winfo_y()
+        new_x = max(0, min(current_x + n, screen_width - self.width))
 
-    def move(self):
-        """Handle pet movement."""
-        if self.moving:
-            current_x, current_y = self.window.winfo_x(), self.window.winfo_y()
-            new_x = current_x + self.x_direction * 5
-            new_y = current_y + self.y_direction * 5
+        # Update facing direction
+        if n > 0 and not self.facing_right:
+            self.facing_right = True
+            self.load_and_display_gif(self.poses["walk"])  # Reload GIF to face right
+        elif n < 0 and self.facing_right:
+            self.facing_right = False
+            self.load_and_display_gif(self.poses["walk"])  # Reload GIF to face left
 
-            # Check screen boundaries
-            screen_width, screen_height = self.window.winfo_screenwidth(), self.window.winfo_screenheight()
-            if new_x < 0 or new_x > screen_width - self.width:
-                self.x_direction *= -1
-            if new_y < 0 or new_y > screen_height - self.height:
-                self.y_direction *= -1
+        self.window.geometry(f"{self.width}x{self.height}+{new_x}+{current_y}")
+        self.set_pose("idle")
 
-            # Update window position
-            self.window.geometry(f"{self.width}x{self.height}+{new_x}+{new_y}")
-            self.window.after(50, self.move)
+    def jump(self, n):
+        """Make the pet jump by n pixels."""
+        self.is_grounded = False
+        self.set_pose("jump")
 
-    def start_screenshot_task(self):
-        """Start the periodic screenshot task."""
-        try:
-            # Take a screenshot
-            screenshot_path = take_screenshot()
+        current_x, current_y = self.window.winfo_x(), self.window.winfo_y()
+        new_y = max(0, current_y - n)
 
-            # Add the screenshot path to the list
-            self.screenshots.append(screenshot_path)
+        self.window.geometry(f"{self.width}x{self.height}+{current_x}+{new_y}")
+        self.window.after(300, self.apply_gravity)
+        self.window.after(500, lambda: self.set_pose("idle"))
 
-            # Remove older screenshots if the limit is exceeded
-            if len(self.screenshots) > self.max_screenshots:
-                old_screenshot = self.screenshots.pop(0)
-                os.remove(old_screenshot)  # Delete the oldest screenshot from disk
+    def move_randomly(self):
+        """Move the pet randomly on the screen."""
+        direction, distance = self.randomize_direction()
 
-            print(f"Screenshot saved: {screenshot_path}")
-        except Exception as e:
-            print(f"Error taking screenshot: {e}")
-            
-        self.window.after(5000, self.start_screenshot_task)  # Schedule the next screenshot in 5 seconds
+        if direction == self.DIRECTIONS["horizontal"]:
+            self.move_horizontally(distance)
+        elif direction == self.DIRECTIONS["vertical"]:
+            self.jump(abs(distance))  # Ensure positive distance for jumping
+
+        random_interval = random.randint(1000, 2000)
+        self.window.after(random_interval, self.move_randomly)
+
+    def randomize_direction(self):
+        """Randomly choose the direction and distance to move. With more probability for horizontal movement."""
+        direction = random.choices(list(self.DIRECTIONS.values()), weights=[0.7, 0.3], k=1)[0]
+
+        # vertical movement distance is longer for more visible effect
+        distance = random.randint(50, 100) if direction == self.DIRECTIONS["horizontal"] else random.randint(100, 200)
+
+        return direction, distance
 
     def interact(self, event):
         """Handle interactions."""
-        display_response_above_pet(self.window, f"Hi! I'm {self.name}!")
+        action = random.choice(["jump", "roast", "say_hi", "grow_shrink"])
+        if action == "jump":
+            self.jump(50)
+        elif action == "roast":
+            self.roast_user()
+        elif action == "say_hi":
+            display_response_above_pet(self.window, f"Hi! I'm {self.name}!")
+        elif action == "grow_shrink":
+            self.grow_and_shrink()
 
     def roast_user(self):
         """Generate a roast based on screenshots."""
         roast = generate_roast_from_image_sequence("screenshots")
         display_response_above_pet(self.window, roast)
 
-    def randomize_direction(self):
-        """Randomize movement direction."""
-        self.x_direction = random.choice([-1, 1])
-        self.y_direction = random.choice([-1, 1])
+    def start_screenshot_task(self):
+        """Start the periodic screenshot task."""
+        try:
+            screenshot_path = take_screenshot()
+            self.screenshots.append(screenshot_path)
+
+            if len(self.screenshots) > self.max_screenshots:
+                old_screenshot = self.screenshots.pop(0)
+                os.remove(old_screenshot)
+
+            print(f"Screenshot saved: {screenshot_path}")
+        except Exception as e:
+            print(f"Error taking screenshot: {e}")
+        self.window.after(5000, self.start_screenshot_task)
+
+
+    def grow_and_shrink(self):
+        """Make the pet grow for a while then shrink."""
+
+        def grow():
+            self.window.geometry(f"{self.width * 2}x{self.height * 2}")
+            self.window.after(1000, shrink)
+
+        def shrink():
+            self.window.geometry(f"{self.width}x{self.height}")
+
+        grow()
+
+
