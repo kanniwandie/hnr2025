@@ -155,11 +155,7 @@ def randomize_direction():
 def interact(event):
     """Handle interactions."""
     action = random.choice(["jump", "roast", "say_hi"])
-    if action == "jump":
-        jump(50)
-    elif action == "roast":
-        roast_user()
-    elif action == "say_hi":
+    if action == "say_hi":
         display_response_above_pet(window, f"Hi! I'm your pet!")
 
 
@@ -197,3 +193,9 @@ if __name__ == "__main__":
     move_randomly()
     start_screenshot_task()
     window.mainloop()
+
+# -------------------------------------------------------------------- XiYuan
+
+# -------------------------------------------------------------------- Ziqiu
+
+# -------------------------------------------------------------------- Ivy
