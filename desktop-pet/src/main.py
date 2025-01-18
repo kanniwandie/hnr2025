@@ -8,7 +8,7 @@ if __name__ == "__main__":
     root.geometry("100x100+200+200")
     root.overrideredirect(True)
 
-    pet = Goose(root, name="Roasty")
+    pet = Pet(root, name="Roasty")
     pet.draw()
     pet.move()
     pet.start_screenshot_task()  # Start periodic screenshot task
