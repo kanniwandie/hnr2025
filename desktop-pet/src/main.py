@@ -5,6 +5,7 @@ from pets.goose import Goose  # Import the Goose pet class from your project str
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.attributes("-transparentcolor", "blue")
     root.geometry("100x100+200+200")
     root.overrideredirect(True)
 

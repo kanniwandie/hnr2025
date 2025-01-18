@@ -40,7 +40,7 @@ class Pet:
 
     def draw(self):
         """Draw the pet on the screen with its idle animation."""
-        self.canvas = tk.Canvas(self.window, width=self.width, height=self.height, bg="black", highlightthickness=0)
+        self.canvas = tk.Canvas(self.window, width=self.width, height=self.height, bg="blue", highlightthickness=0)
         self.canvas.pack()
 
         self.load_and_display_gif(self.poses["idle"])
@@ -69,6 +69,7 @@ class Pet:
 
             # Schedule the next frame update
             self.window.after(100, self.animate_gif)  # Adjust the frame rate as needed
+
 
     def move(self):
         """Handle pet movement."""
