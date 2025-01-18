@@ -1,3 +1,3 @@
 venv/
 resources/
-pycache/
+__pycache__/
