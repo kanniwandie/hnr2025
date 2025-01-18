@@ -28,6 +28,8 @@ screenshots = []
 max_screenshots = 5
 
 
+# -------------------------------------------------------------------- Pet Settings --------------------------------------------------------------------
+
 def set_starting_position():
     """Set the pet's starting position to the bottom-middle of the screen."""
     screen_width = window.winfo_screenwidth()
@@ -36,32 +38,12 @@ def set_starting_position():
     y = screen_height - height
     window.geometry(f"{width}x{height}+{x}+{y}")
 
-
 def set_pose(pose_name):
     """Switch the pet's animation to the given pose."""
     if pose_name in poses:
         load_and_display_gif(poses[pose_name])
     else:
         print(f"Pose '{pose_name}' not found!")
-
-
-def apply_gravity():
-    """Apply gravity to make the pet fall."""
-    global is_grounded
-    if is_grounded:
-        return
-
-    screen_height = window.winfo_screenheight()
-    virtual_floor = screen_height - height - 50  # Raise the floor by 50 pixels
-    current_x, current_y = window.winfo_x(), window.winfo_y()
-
-    if current_y + height < virtual_floor:
-        window.geometry(f"{width}x{height}+{current_x}+{current_y + 10}")
-        window.after(30, apply_gravity)
-    else:
-        is_grounded = True
-        window.geometry(f"{width}x{height}+{current_x}+{virtual_floor}")
-
 
 def draw_pet():
     """Draw the pet on the screen with its idle animation."""
@@ -71,7 +53,7 @@ def draw_pet():
     set_pose("idle")
     canvas.bind("<Button-1>", interact)
 
-
+    
 def load_and_display_gif(file_path):
     """Load a GIF and start animating it."""
     global frames, image_id, current_frame_index
@@ -87,16 +69,47 @@ def load_and_display_gif(file_path):
     image_id = canvas.create_image(width // 2, height // 2, image=frames[0])
     animate_gif()
 
+# -------------------------------------------------------------------- Pet Actions --------------------------------------------------------------------
+def move_randomly():
+    """Move the pet randomly on the screen."""
+    direction, distance = randomize_direction()
 
-def animate_gif():
-    """Cycle through the GIF frames."""
-    global current_frame_index
-    if frames:
-        current_frame_index = (current_frame_index + 1) % len(frames)
-        canvas.itemconfig(image_id, image=frames[current_frame_index])
-        window.after(100, animate_gif)
+    if direction == "horizontal":
+        move_horizontally(distance)
+    elif direction == "vertical":
+        jump(abs(distance))  # Ensure positive distances for jumping
 
+    random_interval = random.randint(1000, 2000)
+    window.after(random_interval, move_randomly)
 
+def interact(event):
+    """Handle interactions."""
+    action = random.choice(["jump", "roast", "say_hi"])
+    if action == "say_hi":
+        display_response_above_pet(window, f"Hi! I'm your pet!")
+
+def roast_user():
+    """Generate a roast based on screenshots."""
+    roast = generate_roast_from_image_sequence("screenshots")
+    display_response_above_pet(window, roast)
+
+def start_screenshot_task():
+    """Start the periodic screenshot task."""
+    global screenshots
+    try:
+        screenshot_path = take_screenshot()
+        screenshots.append(screenshot_path)
+
+        if len(screenshots) > max_screenshots:
+            old_screenshot = screenshots.pop(0)
+            os.remove(old_screenshot)
+
+        print(f"Screenshot saved: {screenshot_path}")
+    except Exception as e:
+        print(f"Error taking screenshot: {e}")
+    window.after(5000, start_screenshot_task)
+
+# ---------------------------------------------------------------- Pet Mini Actions ----------------------------------------------------------------
 def move_horizontally(n):
     """Move the pet horizontally by n pixels."""
     global facing_right
@@ -117,7 +130,6 @@ def move_horizontally(n):
     window.geometry(f"{width}x{height}+{new_x}+{current_y}")
     set_pose("idle")
 
-
 def jump(n):
     """Make the pet jump by n pixels."""
     global is_grounded
@@ -131,19 +143,15 @@ def jump(n):
     window.after(300, apply_gravity)
     window.after(500, lambda: set_pose("idle"))
 
+# -------------------------------------------------------------------- Util Methods --------------------------------------------------------------------
 
-def move_randomly():
-    """Move the pet randomly on the screen."""
-    direction, distance = randomize_direction()
-
-    if direction == "horizontal":
-        move_horizontally(distance)
-    elif direction == "vertical":
-        jump(abs(distance))  # Ensure positive distances for jumping
-
-    random_interval = random.randint(1000, 2000)
-    window.after(random_interval, move_randomly)
-
+def animate_gif():
+    """Cycle through the GIF frames."""
+    global current_frame_index
+    if frames:
+        current_frame_index = (current_frame_index + 1) % len(frames)
+        canvas.itemconfig(image_id, image=frames[current_frame_index])
+        window.after(100, animate_gif)
 
 def randomize_direction():
     """Randomly choose the direction and distance to move."""
@@ -152,34 +160,43 @@ def randomize_direction():
     return direction, distance
 
 
-def interact(event):
-    """Handle interactions."""
-    action = random.choice(["jump", "roast", "say_hi"])
-    if action == "say_hi":
-        display_response_above_pet(window, f"Hi! I'm your pet!")
+# -------------------------------------------------------------------- World Logic --------------------------------------------------------------------
+
+def apply_gravity():
+    """Apply gravity to make the pet fall."""
+    global is_grounded
+    if is_grounded:
+        return
+
+    screen_height = window.winfo_screenheight()
+    virtual_floor = screen_height - height - 50  # Raise the floor by 50 pixels
+    current_x, current_y = window.winfo_x(), window.winfo_y()
+
+    if current_y + height < virtual_floor:
+        window.geometry(f"{width}x{height}+{current_x}+{current_y + 10}")
+        window.after(30, apply_gravity)
+    else:
+        is_grounded = True
+        window.geometry(f"{width}x{height}+{current_x}+{virtual_floor}")
 
 
-def roast_user():
-    """Generate a roast based on screenshots."""
-    roast = generate_roast_from_image_sequence("screenshots")
-    display_response_above_pet(window, roast)
 
 
-def start_screenshot_task():
-    """Start the periodic screenshot task."""
-    global screenshots
-    try:
-        screenshot_path = take_screenshot()
-        screenshots.append(screenshot_path)
 
-        if len(screenshots) > max_screenshots:
-            old_screenshot = screenshots.pop(0)
-            os.remove(old_screenshot)
 
-        print(f"Screenshot saved: {screenshot_path}")
-    except Exception as e:
-        print(f"Error taking screenshot: {e}")
-    window.after(5000, start_screenshot_task)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
@@ -193,9 +210,3 @@ if __name__ == "__main__":
     move_randomly()
     start_screenshot_task()
     window.mainloop()
-
-# -------------------------------------------------------------------- XiYuan
-
-# -------------------------------------------------------------------- Ziqiu
-
-# -------------------------------------------------------------------- Ivy
